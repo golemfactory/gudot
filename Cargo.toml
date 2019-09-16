@@ -1,0 +1,15 @@
+[package]
+name = "gudot"
+version = "0.1.0"
+authors = ["Marcin Benke <marcin.benke@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gwasm-api = { git="https://github.com/golemfactory/gwasm-runner.git", branch="master" }
+gmorph = { git="https://github.com/golemfactory/gmorph.git", branch="master" }
+# gmorph = { path = "../gMorph" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt="0.2"
