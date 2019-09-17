@@ -11,7 +11,6 @@ fn encrypt_vec(key_pair: &KeyPair, v: Vec<u32>) -> Vec<Enc> {
 // [[1,2,3],[2,4,6]]
 fn main() {
     let key_pair = KeyPair::new();
-
     let mut vectors_file = File::open("input.json").expect("Failed to open input.json");
 
     let mut serialized_vectors = String::new();

@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 gwasm-api = { git="https://github.com/golemfactory/gwasm-runner.git", branch="master" }
 gmorph = { git="https://github.com/golemfactory/gmorph.git", branch="master" }
-# gmorph = { path = "../gMorph" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt="0.2"
