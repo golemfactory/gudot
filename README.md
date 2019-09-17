@@ -9,7 +9,7 @@ Linear regression using FHE gMorph library
 ## Building
 ```
 cargo build --bin=generate  
-cargo rustc --release --target wasm32-unknown-emscripten --bin gudot -- -C link-args="-s TOTAL_MEMORY=1024MB"
+cargo rustc --release --target wasm32-unknown-emscripten --bin gudot -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"
 ```
 
 ## Running
