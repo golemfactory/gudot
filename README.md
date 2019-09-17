@@ -8,12 +8,12 @@ Linear regression using FHE gMorph library
 
 ## Building
 ```
-cargo build --bin=generate
+cargo build --bin=generate  
 cargo rustc --release --target wasm32-unknown-emscripten
 ```
 
 ## Running
 ```
 cargo run --bin=generate
-gwasm-runner target/wasm32-unknown-emscripten/release/gudot.wasm
+gwasm-runner target/wasm32-unknown-emscripten/release/gudot.wasm -- --subtasks=N 
 ```
