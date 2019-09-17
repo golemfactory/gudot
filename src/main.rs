@@ -64,6 +64,7 @@ fn merge(_args: &Vec<String>, results: Vec<((Vec<Enc>, Vec<Enc>), (Enc, Enc))>) 
         .map(|p| both(|x| x.decrypt(&key_pair), &p.1))
         .fold((0, 0), |acc, x| (acc.0 + x.0, acc.1 + x.1));
 
+    // println!("a={} b={}", a, b);
     let m = a as f64 / b as f64;
     println!("m = {}", m);
 }
@@ -80,7 +81,7 @@ fn dot_product_enc(v: &Vec<Enc>, w: &Vec<Enc>) -> Enc {
 
     let mut sum = v[0] * w[0];
 
-    for index in 0..length {
+    for index in 1..length {
         sum = sum + v[index] * w[index];
     }
     sum
