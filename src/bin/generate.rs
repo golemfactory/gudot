@@ -5,12 +5,18 @@ fn main() {
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
 
+    let v = 2.71;
+    let t0 = 9*3600;
+    let d0 = 6624;
     let mut x = Vec::new();
     let mut y = Vec::new();
 
-    for i in 1..1000 {
-        x.push(i);
-        y.push((2.71*(i as f64)).round() as u32);
+    for i in 1..100 {
+        let t = t0 + i;
+        let dd = (v*(i as f64)).round() as u32;
+        let d = d0 - dd;
+        x.push(t);
+        y.push(d);
     }
     let serialized = serde_json::to_string(&(x,y))
         .expect("Failed to serialize vectors");
