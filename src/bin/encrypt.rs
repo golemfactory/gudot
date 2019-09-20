@@ -13,16 +13,27 @@ fn main() {
     let key_pair = KeyPair::new();
     let mut vectors_file = File::open("input.json").expect("Failed to open input.json");
 
-    let mut serialized_vectors = String::new();
+    let mut serialized_input = String::new();
     vectors_file
-        .read_to_string(&mut serialized_vectors)
+        .read_to_string(&mut serialized_input)
         .expect("Failed to read input.json");
 
     let (x, y): (Vec<u32>, Vec<u32>) =
-        serde_json::from_str(&serialized_vectors).expect("Failed to deserialize input vectors");
+        serde_json::from_str(&serialized_input).expect("Failed to deserialize input vectors");
 
-    let enc_x = encrypt_vec(&key_pair, x);
-    let enc_y = encrypt_vec(&key_pair, y);
+    let first_x: u32 = x[0];
+    let first_y: u32 = y[0];
+    let last_y: u32 = *y.last().unwrap();
+
+    let x1: Vec<u32>  = x.into_iter().map(|v| v - first_x).collect();
+    let y1: Vec<u32> = if last_y < first_y {
+        y.into_iter().map( |v| first_y - v).collect()
+    }
+    else {
+        y.into_iter().map( |v| v-first_y).collect()
+    };
+    let enc_x = encrypt_vec(&key_pair, x1);
+    let enc_y = encrypt_vec(&key_pair, y1);
 
     let data = serde_json::to_string(&(enc_x, enc_y)).unwrap();
     let serialized_keypair = serde_json::to_string(&key_pair).unwrap();
