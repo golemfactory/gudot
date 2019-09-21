@@ -1,28 +1,37 @@
-# gudot
-Linear regression using FHE gMorph library
+# gudot 
+Linear regression using FHE [gMorph] library
+
+[gMorph]: https://github.com/golemfactory/gmorph
 
 ## Requirements
-* emsdk
-* Rust stable
-* gwasm-runner
+* emsdk - installation instructions can be found
+  [here](https://emscripten.org/docs/getting_started/downloads.html)
+* gwasm-runner - you can either build it from source as described
+  [here](https://github.com/golemfactory/gwasm-runner), or download
+  a precompiled binary from [here](https://github.com/golemfactory/gwasm-runner/releases)
 
 ## Building
+Assuming you've got the prerequisites satisfied, in order to build the project, simply run
+
 ```
-cargo build --bin=generate
-cargo build --bin=encrypt
-cargo rustc --release --target wasm32-unknown-emscripten --bin gudot -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"
+cargo build --release
 ```
 
 ## Running
+The project involves executing three steps in sequence: 2 steps are done on the host OS (so your machine),
+whereas the final step is performed using gWasm (run on `gwasm-runner`). The sequence can be
+summarised as follows
+
 ```
-cargo run --bin=generate
-cargo run --bin=encrypt
-gwasm-runner target/wasm32-unknown-emscripten/release/gudot.wasm -- --subtasks=N
+cargo run -- generate
+cargo run -- encrypt
+gwasm-runner target/release/gudot.wasm -- --subtasks=N
 ```
 
 ## Components
-
 * `generate` --- creates `input.json` containing sample data in the format `[[x1,...,xn][y1,...,yn]]`
-(this step is optional - you can provide your own `input.json`)
-* `encrypt` --- generates a secret encryption key (`keys.json`) and encrypts `input.json` yielding `data.json`
-* `gudot` --- the main binary, meant to be run with `gwasm-runner` - splits the encrypted data, sends parts to providers, decrypts and combines partial results returned by the providers (reads `keys.json` and `data.json`).
+  (this step is optional - you can provide your own `input.json`)
+* `encrypt` --- generates a secret encryption key (`keys.json`), and encrypts `input.json` yielding `data.json`
+* `gudot.wasm` --- the main gWasm binary, meant to be run with `gwasm-runner`; it splits the encrypted data,
+  sends parts to providers, decrypts and combines partial results returned by the providers
+  (reads `keys.json` and `data.json`).
