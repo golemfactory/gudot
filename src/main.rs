@@ -1,4 +1,4 @@
-use gmorph::{Enc, Encrypt, KeyPair};
+use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -40,6 +40,8 @@ fn main() {
 }
 
 fn generate_impl() -> GuDotResult {
+    const FILENAME: &str = "input.json";
+
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
     let v = 2.71;
@@ -56,13 +58,13 @@ fn generate_impl() -> GuDotResult {
         x.push(t);
         y.push(d);
     }
-    let serialized =
-        serde_json::to_string(&(x, y)).map_err(|_| "Failed to serialize vectors".to_string())?;
-    let mut data_file =
-        File::create("input.json").map_err(|_| "Failed to create input.json".to_string())?;
+    let serialized = serde_json::to_string(&(x, y))
+        .map_err(|err| format!("Failed to serialize vectors: {}", err))?;
+    let mut data_file = File::create(FILENAME)
+        .map_err(|err| format!("Failed to create file {}: {}", FILENAME, err))?;
     data_file
         .write_all(serialized.as_bytes())
-        .map_err(|_| "Failed to write input.json".to_string())
+        .map_err(|err| format!("Failed to write to file {}: {}", FILENAME, err))
 }
 
 fn encrypt_impl() -> GuDotResult {
@@ -70,19 +72,23 @@ fn encrypt_impl() -> GuDotResult {
         v.into_iter().map(|x| Enc::encrypt(&key_pair, x)).collect()
     }
 
+    const INPUT_FN: &str = "input.json";
+    const KEYS_FN: &str = "keys.json";
+    const OUTPUT_FN: &str = "enc_input.json";
+
     // input.json of the form
     // [[1,2,3],[2,4,6]]
     let key_pair = KeyPair::new();
     let mut vectors_file =
-        File::open("input.json").map_err(|_| "Failed to open input.json".to_string())?;
+        File::open(INPUT_FN).map_err(|err| format!("Failed to open file {}: {}", INPUT_FN, err))?;
 
     let mut serialized_input = String::new();
     vectors_file
         .read_to_string(&mut serialized_input)
-        .map_err(|_| "Failed to read input.json".to_string())?;
+        .map_err(|err| format!("Failed to read file {}: {}", INPUT_FN, err))?;
 
     let (x, y): (Vec<u32>, Vec<u32>) = serde_json::from_str(&serialized_input)
-        .map_err(|_| "Failed to deserialize input vectors".to_string())?;
+        .map_err(|err| format!("Failed to deserialize input vectors: {}", err))?;
 
     let first_x: u32 = x[0];
     let first_y: u32 = y[0];
@@ -102,20 +108,29 @@ fn encrypt_impl() -> GuDotResult {
     let serialized_keypair = serde_json::to_string(&key_pair)
         .map_err(|err| format!("Couldn't convert key-pair to JSON: {}", err))?;
 
-    let mut data_file =
-        File::create("data.json").map_err(|_| "Failed to create data.json".to_string())?;
+    let mut data_file = File::create(OUTPUT_FN)
+        .map_err(|err| format!("Failed to create file {}: {}", OUTPUT_FN, err))?;
     data_file
         .write_all(data.as_bytes())
-        .map_err(|_| "Failed to write data.json".to_string())?;
+        .map_err(|err| format!("Failed to write file {}: {}", OUTPUT_FN, err))?;
 
-    let mut keys_file =
-        File::create("keys.json").map_err(|_| "Failed to create keys.json".to_string())?;
+    let mut keys_file = File::create(KEYS_FN)
+        .map_err(|err| format!("Failed to create file {}: {}", KEYS_FN, err))?;
     keys_file
         .write_all(serialized_keypair.as_bytes())
-        .map_err(|_| "Failed to write keys.json".to_string())
+        .map_err(|err| format!("Failed to write {}: {}", KEYS_FN, err))
 }
 
 fn decrypt_impl() -> GuDotResult {
+    let mut keys_file =
+        File::open("keys.json").map_err(|_| "Failed to open keys.json".to_string())?;
+    let mut serialized_keypair = String::new();
+    keys_file
+        .read_to_string(&mut serialized_keypair)
+        .map_err(|_| "Failed to read keys.json to String".to_string())?;
+    let key_pair: KeyPair = serde_json::from_str(&serialized_keypair)
+        .map_err(|err| format!("Invalid JSON in keys.json: {}", err))?;
+
     Ok(())
 }
 
