@@ -5,27 +5,41 @@ use std::{
 };
 use structopt::StructOpt;
 
+type GuDotResult = std::result::Result<(), String>;
+
 #[derive(StructOpt, Debug)]
 enum GuDot {
     /// Generate test input data
     #[structopt(name = "generate")]
     Generate,
-    /// Encrypt test input data
+    /// Encrypt input data
     #[structopt(name = "encrypt")]
     Encrypt,
+    /// Decrypt output data
+    #[structopt(name = "decrypt")]
+    Decrypt,
+    /// Regress output data
+    #[structopt(name = "regress")]
+    Regress,
+    /// Plot input data with/without regressed line
+    #[structopt(name = "plot")]
+    Plot,
 }
 
 fn main() {
     let res = match GuDot::from_args() {
         GuDot::Generate => generate_impl(),
         GuDot::Encrypt => encrypt_impl(),
+        GuDot::Decrypt => decrypt_impl(),
+        GuDot::Regress => regress_impl(),
+        GuDot::Plot => plot_impl(),
     };
     if let Err(err) = res {
         eprintln!("Error occurred: {}", err);
     }
 }
 
-fn generate_impl() -> Result<(), String> {
+fn generate_impl() -> GuDotResult {
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
     let v = 2.71;
@@ -51,7 +65,7 @@ fn generate_impl() -> Result<(), String> {
         .map_err(|_| "Failed to write input.json".to_string())
 }
 
-fn encrypt_impl() -> Result<(), String> {
+fn encrypt_impl() -> GuDotResult {
     fn encrypt_vec(key_pair: &KeyPair, v: Vec<u32>) -> Vec<Enc> {
         v.into_iter().map(|x| Enc::encrypt(&key_pair, x)).collect()
     }
@@ -99,4 +113,16 @@ fn encrypt_impl() -> Result<(), String> {
     keys_file
         .write_all(serialized_keypair.as_bytes())
         .map_err(|_| "Failed to write keys.json".to_string())
+}
+
+fn decrypt_impl() -> GuDotResult {
+    Ok(())
+}
+
+fn regress_impl() -> GuDotResult {
+    Ok(())
+}
+
+fn plot_impl() -> GuDotResult {
+    Ok(())
 }
