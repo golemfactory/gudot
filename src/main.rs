@@ -1,11 +1,13 @@
 use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     fs::File,
     io::{Read, Write},
+    path::Path,
 };
 use structopt::StructOpt;
 
-type GuDotResult = std::result::Result<(), String>;
+type Result<T> = std::result::Result<T, String>;
 
 #[derive(StructOpt, Debug)]
 enum GuDot {
@@ -39,7 +41,7 @@ fn main() {
     }
 }
 
-fn generate_impl() -> GuDotResult {
+fn generate_impl() -> Result<()> {
     const FILENAME: &str = "input.json";
 
     //    let x = vec!(1,2,3,4);
@@ -58,16 +60,11 @@ fn generate_impl() -> GuDotResult {
         x.push(t);
         y.push(d);
     }
-    let serialized = serde_json::to_string(&(x, y))
-        .map_err(|err| format!("Failed to serialize vectors: {}", err))?;
-    let mut data_file = File::create(FILENAME)
-        .map_err(|err| format!("Failed to create file {}: {}", FILENAME, err))?;
-    data_file
-        .write_all(serialized.as_bytes())
-        .map_err(|err| format!("Failed to write to file {}: {}", FILENAME, err))
+
+    serialize_to_file((x, y), FILENAME)
 }
 
-fn encrypt_impl() -> GuDotResult {
+fn encrypt_impl() -> Result<()> {
     fn encrypt_vec(key_pair: &KeyPair, v: Vec<u32>) -> Vec<Enc> {
         v.into_iter().map(|x| Enc::encrypt(&key_pair, x)).collect()
     }
@@ -79,23 +76,16 @@ fn encrypt_impl() -> GuDotResult {
     // input.json of the form
     // [[1,2,3],[2,4,6]]
     let key_pair = KeyPair::new();
-    let mut vectors_file =
-        File::open(INPUT_FN).map_err(|err| format!("Failed to open file {}: {}", INPUT_FN, err))?;
-
-    let mut serialized_input = String::new();
-    vectors_file
-        .read_to_string(&mut serialized_input)
-        .map_err(|err| format!("Failed to read file {}: {}", INPUT_FN, err))?;
-
-    let (x, y): (Vec<u32>, Vec<u32>) = serde_json::from_str(&serialized_input)
-        .map_err(|err| format!("Failed to deserialize input vectors: {}", err))?;
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
 
     let first_x: u32 = x[0];
     let first_y: u32 = y[0];
-    let last_y: u32 = *y.last().unwrap();
+    let last_y = y
+        .last()
+        .ok_or("Expected at least one element in the input vector".to_string())?;
 
     let x1: Vec<u32> = x.into_iter().map(|v| v - first_x).collect();
-    let y1: Vec<u32> = if last_y < first_y {
+    let y1: Vec<u32> = if *last_y < first_y {
         y.into_iter().map(|v| first_y - v).collect()
     } else {
         y.into_iter().map(|v| v - first_y).collect()
@@ -103,46 +93,17 @@ fn encrypt_impl() -> GuDotResult {
     let enc_x = encrypt_vec(&key_pair, x1);
     let enc_y = encrypt_vec(&key_pair, y1);
 
-    let data = serde_json::to_string(&(enc_x, enc_y))
-        .map_err(|err| format!("Couldn't convert encrypted data to JSON: {}", err))?;
-    let serialized_keypair = serde_json::to_string(&key_pair)
-        .map_err(|err| format!("Couldn't convert key-pair to JSON: {}", err))?;
-
-    let mut data_file = File::create(OUTPUT_FN)
-        .map_err(|err| format!("Failed to create file {}: {}", OUTPUT_FN, err))?;
-    data_file
-        .write_all(data.as_bytes())
-        .map_err(|err| format!("Failed to write file {}: {}", OUTPUT_FN, err))?;
-
-    let mut keys_file = File::create(KEYS_FN)
-        .map_err(|err| format!("Failed to create file {}: {}", KEYS_FN, err))?;
-    keys_file
-        .write_all(serialized_keypair.as_bytes())
-        .map_err(|err| format!("Failed to write {}: {}", KEYS_FN, err))
+    serialize_to_file((enc_x, enc_y), OUTPUT_FN)?;
+    serialize_to_file(key_pair, KEYS_FN)
 }
 
-fn decrypt_impl() -> GuDotResult {
+fn decrypt_impl() -> Result<()> {
     const KEYS_FN: &str = "keys.json";
     const INPUT_FN: &str = "enc_output.json";
     const OUTPUT_FN: &str = "output.json";
 
-    let mut keys_file =
-        File::open(KEYS_FN).map_err(|err| format!("Failed to open file {}: {}", KEYS_FN, err))?;
-    let mut serialized_keypair = String::new();
-    keys_file
-        .read_to_string(&mut serialized_keypair)
-        .map_err(|err| format!("Failed to read {} to String: {}", KEYS_FN, err))?;
-    let key_pair: KeyPair = serde_json::from_str(&serialized_keypair)
-        .map_err(|err| format!("Invalid JSON in {}: {}", KEYS_FN, err))?;
-
-    let mut data_file =
-        File::open(INPUT_FN).map_err(|err| format!("Failed to open file {}: {}", INPUT_FN, err))?;
-    let mut serialized_data = String::new();
-    data_file
-        .read_to_string(&mut serialized_data)
-        .map_err(|err| format!("Failed to read {} to String: {}", INPUT_FN, err))?;
-    let data: Vec<(Enc, Enc)> = serde_json::from_str(&serialized_data)
-        .map_err(|err| format!("Invalid JSON in {}: {}", INPUT_FN, err))?;
+    let key_pair: KeyPair = deserialize_from_file(KEYS_FN)?;
+    let data: Vec<(Enc, Enc)> = deserialize_from_file(INPUT_FN)?;
 
     // decrypt
     let data: Vec<_> = data
@@ -150,19 +111,61 @@ fn decrypt_impl() -> GuDotResult {
         .map(|(a, b)| (a.decrypt(&key_pair), b.decrypt(&key_pair)))
         .collect();
 
-    let mut data_file = File::create(OUTPUT_FN)
-        .map_err(|err| format!("Failed to create file {}: {}", OUTPUT_FN, err))?;
-    let serialized_data = serde_json::to_string(&data)
-        .map_err(|err| format!("Failed to convert decrypted data to JSON: {}", err))?;
-    data_file
-        .write_all(serialized_data.as_bytes())
-        .map_err(|err| format!("Failed to write JSON to file {}: {}", OUTPUT_FN, err))
+    serialize_to_file(data, OUTPUT_FN)
 }
 
-fn regress_impl() -> GuDotResult {
+fn regress_impl() -> Result<()> {
+    const INPUT_FN: &str = "output.json";
+    const OUTPUT_FN: &str = "regress.json";
+
+    let fitted: Vec<(u32, u32)> = deserialize_from_file(INPUT_FN)?;
+    let (a, b) = fitted
+        .into_iter()
+        .fold((0, 0), |(acc_a, acc_b), (a, b)| (acc_a + a, acc_b + b));
+    let coeff = a as f64 / b as f64;
+
+    serialize_to_file(coeff, OUTPUT_FN)
+}
+
+fn plot_impl() -> Result<()> {
     Ok(())
 }
 
-fn plot_impl() -> GuDotResult {
-    Ok(())
+fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -> Result<T> {
+    let mut file = File::open(filename.as_ref()).map_err(|err| {
+        format!(
+            "Failed to open file {}: {}",
+            filename.as_ref().display(),
+            err
+        )
+    })?;
+    let mut serialized = String::new();
+    file.read_to_string(&mut serialized).map_err(|err| {
+        format!(
+            "Failed to read {} to String: {}",
+            filename.as_ref().display(),
+            err
+        )
+    })?;
+    serde_json::from_str(&serialized)
+        .map_err(|err| format!("Invalid JSON in {}: {}", filename.as_ref().display(), err))
+}
+
+fn serialize_to_file<T: Serialize, P: AsRef<Path>>(data: T, filename: P) -> Result<()> {
+    let mut file = File::create(filename.as_ref()).map_err(|err| {
+        format!(
+            "Failed to create file {}: {}",
+            filename.as_ref().display(),
+            err
+        )
+    })?;
+    let serialized = serde_json::to_string(&data)
+        .map_err(|err| format!("Failed to convert data to JSON: {}", err))?;
+    file.write_all(serialized.as_bytes()).map_err(|err| {
+        format!(
+            "Failed to write JSON to file {}: {}",
+            filename.as_ref().display(),
+            err
+        )
+    })
 }
