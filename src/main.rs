@@ -1,31 +1,47 @@
-use gmorph::{Enc, Encrypt, KeyPair};
-use std::{
-    fs::File,
-    io::{Read, Write},
-};
+use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
+use gudot_utils::{deserialize_from_file, serialize_to_file};
+use plotters::prelude::*;
+use rand::prelude::*;
+use rand_distr::Normal;
 use structopt::StructOpt;
+
+type Result<T> = std::result::Result<T, String>;
 
 #[derive(StructOpt, Debug)]
 enum GuDot {
     /// Generate test input data
     #[structopt(name = "generate")]
     Generate,
-    /// Encrypt test input data
+    /// Encrypt input data
     #[structopt(name = "encrypt")]
     Encrypt,
+    /// Decrypt output data
+    #[structopt(name = "decrypt")]
+    Decrypt,
+    /// Regress output data
+    #[structopt(name = "regress")]
+    Regress,
+    /// Plot input data with/without regressed line
+    #[structopt(name = "plot")]
+    Plot,
 }
 
 fn main() {
     let res = match GuDot::from_args() {
         GuDot::Generate => generate_impl(),
         GuDot::Encrypt => encrypt_impl(),
+        GuDot::Decrypt => decrypt_impl(),
+        GuDot::Regress => regress_impl(),
+        GuDot::Plot => plot_impl(),
     };
     if let Err(err) = res {
         eprintln!("Error occurred: {}", err);
     }
 }
 
-fn generate_impl() -> Result<(), String> {
+fn generate_impl() -> Result<()> {
+    const FILENAME: &str = "input.json";
+
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
     let v = 2.71;
@@ -35,47 +51,44 @@ fn generate_impl() -> Result<(), String> {
     let mut x = Vec::new();
     let mut y = Vec::new();
 
+    let mut rng = thread_rng();
+    let normal =
+        Normal::new(0.0, 2.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
+
     for i in 1..100 {
         let t = t0 + i;
-        let dd = (v * (i as f64)).round() as u32;
+        let noise = normal.sample(&mut rng);
+        let dd = (v * (i as f64) + noise).round() as u32;
         let d = d0 - dd;
         x.push(t);
         y.push(d);
     }
-    let serialized =
-        serde_json::to_string(&(x, y)).map_err(|_| "Failed to serialize vectors".to_string())?;
-    let mut data_file =
-        File::create("input.json").map_err(|_| "Failed to create input.json".to_string())?;
-    data_file
-        .write_all(serialized.as_bytes())
-        .map_err(|_| "Failed to write input.json".to_string())
+
+    serialize_to_file((x, y), FILENAME)
 }
 
-fn encrypt_impl() -> Result<(), String> {
+fn encrypt_impl() -> Result<()> {
     fn encrypt_vec(key_pair: &KeyPair, v: Vec<u32>) -> Vec<Enc> {
         v.into_iter().map(|x| Enc::encrypt(&key_pair, x)).collect()
     }
 
+    const INPUT_FN: &str = "input.json";
+    const KEYS_FN: &str = "keys.json";
+    const OUTPUT_FN: &str = "enc_input.json";
+
     // input.json of the form
     // [[1,2,3],[2,4,6]]
     let key_pair = KeyPair::new();
-    let mut vectors_file =
-        File::open("input.json").map_err(|_| "Failed to open input.json".to_string())?;
-
-    let mut serialized_input = String::new();
-    vectors_file
-        .read_to_string(&mut serialized_input)
-        .map_err(|_| "Failed to read input.json".to_string())?;
-
-    let (x, y): (Vec<u32>, Vec<u32>) = serde_json::from_str(&serialized_input)
-        .map_err(|_| "Failed to deserialize input vectors".to_string())?;
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
 
     let first_x: u32 = x[0];
     let first_y: u32 = y[0];
-    let last_y: u32 = *y.last().unwrap();
+    let last_y = y
+        .last()
+        .ok_or("Expected at least one element in the input vector".to_string())?;
 
     let x1: Vec<u32> = x.into_iter().map(|v| v - first_x).collect();
-    let y1: Vec<u32> = if last_y < first_y {
+    let y1: Vec<u32> = if *last_y < first_y {
         y.into_iter().map(|v| first_y - v).collect()
     } else {
         y.into_iter().map(|v| v - first_y).collect()
@@ -83,20 +96,103 @@ fn encrypt_impl() -> Result<(), String> {
     let enc_x = encrypt_vec(&key_pair, x1);
     let enc_y = encrypt_vec(&key_pair, y1);
 
-    let data = serde_json::to_string(&(enc_x, enc_y))
-        .map_err(|err| format!("Couldn't convert encrypted data to JSON: {}", err))?;
-    let serialized_keypair = serde_json::to_string(&key_pair)
-        .map_err(|err| format!("Couldn't convert key-pair to JSON: {}", err))?;
+    serialize_to_file((enc_x, enc_y), OUTPUT_FN)?;
+    serialize_to_file(key_pair, KEYS_FN)
+}
 
-    let mut data_file =
-        File::create("data.json").map_err(|_| "Failed to create data.json".to_string())?;
-    data_file
-        .write_all(data.as_bytes())
-        .map_err(|_| "Failed to write data.json".to_string())?;
+fn decrypt_impl() -> Result<()> {
+    const KEYS_FN: &str = "keys.json";
+    const INPUT_FN: &str = "enc_output.json";
+    const OUTPUT_FN: &str = "output.json";
 
-    let mut keys_file =
-        File::create("keys.json").map_err(|_| "Failed to create keys.json".to_string())?;
-    keys_file
-        .write_all(serialized_keypair.as_bytes())
-        .map_err(|_| "Failed to write keys.json".to_string())
+    let key_pair: KeyPair = deserialize_from_file(KEYS_FN)?;
+    let data: Vec<(Enc, Enc)> = deserialize_from_file(INPUT_FN)?;
+
+    // decrypt
+    let data: Vec<_> = data
+        .into_iter()
+        .map(|(a, b)| (a.decrypt(&key_pair), b.decrypt(&key_pair)))
+        .collect();
+
+    serialize_to_file(data, OUTPUT_FN)
+}
+
+fn regress_impl() -> Result<()> {
+    const INPUT_FN: &str = "input.json";
+    const OUTPUT_FN: &str = "output.json";
+    const REGRESS_FN: &str = "regress.json";
+
+    let fitted: Vec<(u32, u32)> = deserialize_from_file(OUTPUT_FN)?;
+    let (a, b) = fitted
+        .into_iter()
+        .fold((0, 0), |(acc_a, acc_b), (a, b)| (acc_a + a, acc_b + b));
+    let slope = -1.0 * a as f64 / b as f64;
+
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
+    let (min_x, max_x) = (
+        *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
+        *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
+    );
+    let (min_y, max_y) = (
+        *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
+        *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
+    );
+    let intercept = (min_y + max_y - slope * (min_x + max_x)) / 2.0;
+
+    println!("Fitted model: y = {}x + {}", slope, intercept);
+
+    serialize_to_file((slope, intercept), REGRESS_FN)
+}
+
+fn plot_impl() -> Result<()> {
+    const INPUT_FN: &str = "input.json";
+    const REGRESS_FN: &str = "regress.json";
+
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
+    let (min_x, max_x) = (
+        *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
+        *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
+    );
+    let (min_y, max_y) = (
+        *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
+        *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
+    );
+    let points: Vec<(f64, f64)> = x
+        .into_iter()
+        .zip(y.into_iter())
+        .map(|(x, y)| (x as f64, y as f64))
+        .collect();
+
+    let root = BitMapBackend::new("plot.png", (1024, 768)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root.margin(20, 20, 20, 20);
+    let mut chart = ChartBuilder::on(&root)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_ranged(min_x..max_x, min_y..max_y)
+        .unwrap();
+    chart.configure_mesh().draw().unwrap();
+    chart
+        .draw_series(PointSeries::of_element(
+            points.clone(),
+            2,
+            &BLUE,
+            &|c, s, st| {
+                return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
+            },
+        ))
+        .unwrap();
+
+    if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
+        let points: Vec<(f64, f64)> = points
+            .into_iter()
+            .map(|(x, _)| (x, slope * x + intercept))
+            .collect();
+        let style = ShapeStyle::from(&RED);
+        chart
+            .draw_series(LineSeries::new(points, style.stroke_width(2)))
+            .unwrap();
+    }
+
+    Ok(())
 }

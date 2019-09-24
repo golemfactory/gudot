@@ -1,8 +1,9 @@
-use super::utils::{both, chop, zip_pair};
+use super::Result;
 use gmorph::Enc;
+use gudot_utils::{both, chop, deserialize_from_file, zip_pair};
 use gwasm_api::SplitContext;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read, process};
+use std::process;
 use structopt::StructOpt;
 
 pub(crate) fn split(context: &mut dyn SplitContext) -> Vec<(Vec<Enc>, Vec<Enc>)> {
@@ -18,15 +19,9 @@ pub(crate) fn split(context: &mut dyn SplitContext) -> Vec<(Vec<Enc>, Vec<Enc>)>
     }
 }
 
-fn split_impl(num_subtasks: usize) -> Result<Vec<(Vec<Enc>, Vec<Enc>)>, String> {
-    let mut data_file =
-        File::open("data.json").map_err(|_| "Failed to open data.json".to_string())?;
-    let mut serialized = String::new();
-    data_file
-        .read_to_string(&mut serialized)
-        .map_err(|_| "Couldn't read data.json to String".to_string())?;
-    let data: (Vec<Enc>, Vec<Enc>) = serde_json::from_str(&serialized)
-        .map_err(|err| format!("Invalid JSON found in data.json: {}", err))?;
+fn split_impl(num_subtasks: usize) -> Result<Vec<(Vec<Enc>, Vec<Enc>)>> {
+    const FILENAME: &str = "enc_input.json";
+    let data: (Vec<Enc>, Vec<Enc>) = deserialize_from_file(FILENAME)?;
     Ok(zip_pair(both(|v| chop(v, num_subtasks), &data)).collect())
 }
 

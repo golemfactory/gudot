@@ -1,5 +1,5 @@
 [package]
-name = "gudot"
+name = "gudot-utils"
 version = "0.1.0"
 authors = ["Marcin Benke <marcin.benke@golem.network>", "Jakub Konka <kubkon@golem.network>"]
 edition = "2018"
@@ -7,12 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gmorph = { git="https://github.com/golemfactory/gmorph.git" }
-structopt="0.2"
-gudot-utils = { path = "./gudot-utils" }
-plotters = "0.2"
-rand = "0.7"
-rand_distr = "0.2"
-
-[workspace]
-exclude = ["gudot-gwasm"]
+serde = "1.0"
+serde_json = "1.0"
