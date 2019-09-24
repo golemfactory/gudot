@@ -118,16 +118,30 @@ fn decrypt_impl() -> Result<()> {
 }
 
 fn regress_impl() -> Result<()> {
-    const INPUT_FN: &str = "output.json";
-    const OUTPUT_FN: &str = "regress.json";
+    const INPUT_FN: &str = "input.json";
+    const OUTPUT_FN: &str = "output.json";
+    const REGRESS_FN: &str = "regress.json";
 
-    let fitted: Vec<(u32, u32)> = deserialize_from_file(INPUT_FN)?;
+    let fitted: Vec<(u32, u32)> = deserialize_from_file(OUTPUT_FN)?;
     let (a, b) = fitted
         .into_iter()
         .fold((0, 0), |(acc_a, acc_b), (a, b)| (acc_a + a, acc_b + b));
-    let coeff = a as f64 / b as f64;
+    let slope = -1.0 * a as f64 / b as f64;
 
-    serialize_to_file(coeff, OUTPUT_FN)
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
+    let (min_x, max_x) = (
+        *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
+        *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
+    );
+    let (min_y, max_y) = (
+        *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
+        *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
+    );
+    let intercept = (min_y + max_y - slope * (min_x + max_x)) / 2.0;
+
+    println!("Fitted model: y = {}x + {}", slope, intercept);
+
+    serialize_to_file((slope, intercept), REGRESS_FN)
 }
 
 fn plot_impl() -> Result<()> {
@@ -169,10 +183,11 @@ fn plot_impl() -> Result<()> {
         ))
         .unwrap();
 
-    if let Ok(m) = deserialize_from_file::<f64, _>(REGRESS_FN) {
-        // estimate b
-        let b = (min_y + max_y + m * (min_x + max_x)) / 2.0;
-        let points: Vec<(f64, f64)> = points.into_iter().map(|(x, _)| (x, -m * x + b)).collect();
+    if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
+        let points: Vec<(f64, f64)> = points
+            .into_iter()
+            .map(|(x, _)| (x, slope * x + intercept))
+            .collect();
         let style = ShapeStyle::from(&RED);
         chart
             .draw_series(LineSeries::new(points, style.stroke_width(2)))
