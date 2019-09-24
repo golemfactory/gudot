@@ -27,6 +27,7 @@ cargo run --release -- generate
 cargo run --release -- encrypt
 gwasm-runner target/release/gudot.wasm -- --subtasks=N
 cargo run --release -- decrypt
+cargo run --release -- regress
 cargo run --release -- plot
 ```
 
@@ -37,4 +38,5 @@ cargo run --release -- plot
 * `gudot.wasm` --- the main gWasm binary, meant to be run with `gwasm-runner`; it splits the encrypted data;
   sends parts to providers and combines partial results returned by the providers
 * `decrypt` --- decrypts the received results, producing `output.json`   (reads `keys.json` and `enc_output.json`);
+* `regress` --- calculates parameters `(slope, intercept)` of the fitted linear model, producing `regress.json`
 * `plot` --- plots the regression line along with the input points, producing `plot.png`.
