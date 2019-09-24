@@ -11,6 +11,8 @@ gmorph = { git="https://github.com/golemfactory/gmorph.git" }
 structopt="0.2"
 gudot-utils = { path = "./gudot-utils" }
 plotters = "0.2"
+rand = "0.7"
+rand_distr = "0.2"
 
 [workspace]
 exclude = ["gudot-gwasm"]

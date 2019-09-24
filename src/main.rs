@@ -1,6 +1,8 @@
 use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
 use gudot_utils::{deserialize_from_file, serialize_to_file};
 use plotters::prelude::*;
+use rand::prelude::*;
+use rand_distr::Normal;
 use structopt::StructOpt;
 
 type Result<T> = std::result::Result<T, String>;
@@ -49,9 +51,14 @@ fn generate_impl() -> Result<()> {
     let mut x = Vec::new();
     let mut y = Vec::new();
 
+    let mut rng = thread_rng();
+    let normal =
+        Normal::new(0.0, 2.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
+
     for i in 1..100 {
         let t = t0 + i;
-        let dd = (v * (i as f64)).round() as u32;
+        let noise = normal.sample(&mut rng);
+        let dd = (v * (i as f64) + noise).round() as u32;
         let d = d0 - dd;
         x.push(t);
         y.push(d);
@@ -136,7 +143,6 @@ fn plot_impl() -> Result<()> {
         *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
         *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
     );
-    dbg!(&min_y, &max_y);
     let points: Vec<(f64, f64)> = x
         .into_iter()
         .zip(y.into_iter())
