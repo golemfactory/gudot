@@ -122,16 +122,41 @@ fn encrypt_impl() -> GuDotResult {
 }
 
 fn decrypt_impl() -> GuDotResult {
+    const KEYS_FN: &str = "keys.json";
+    const INPUT_FN: &str = "enc_output.json";
+    const OUTPUT_FN: &str = "output.json";
+
     let mut keys_file =
-        File::open("keys.json").map_err(|_| "Failed to open keys.json".to_string())?;
+        File::open(KEYS_FN).map_err(|err| format!("Failed to open file {}: {}", KEYS_FN, err))?;
     let mut serialized_keypair = String::new();
     keys_file
         .read_to_string(&mut serialized_keypair)
-        .map_err(|_| "Failed to read keys.json to String".to_string())?;
+        .map_err(|err| format!("Failed to read {} to String: {}", KEYS_FN, err))?;
     let key_pair: KeyPair = serde_json::from_str(&serialized_keypair)
-        .map_err(|err| format!("Invalid JSON in keys.json: {}", err))?;
+        .map_err(|err| format!("Invalid JSON in {}: {}", KEYS_FN, err))?;
 
-    Ok(())
+    let mut data_file =
+        File::open(INPUT_FN).map_err(|err| format!("Failed to open file {}: {}", INPUT_FN, err))?;
+    let mut serialized_data = String::new();
+    data_file
+        .read_to_string(&mut serialized_data)
+        .map_err(|err| format!("Failed to read {} to String: {}", INPUT_FN, err))?;
+    let data: Vec<(Enc, Enc)> = serde_json::from_str(&serialized_data)
+        .map_err(|err| format!("Invalid JSON in {}: {}", INPUT_FN, err))?;
+
+    // decrypt
+    let data: Vec<_> = data
+        .into_iter()
+        .map(|(a, b)| (a.decrypt(&key_pair), b.decrypt(&key_pair)))
+        .collect();
+
+    let mut data_file = File::create(OUTPUT_FN)
+        .map_err(|err| format!("Failed to create file {}: {}", OUTPUT_FN, err))?;
+    let serialized_data = serde_json::to_string(&data)
+        .map_err(|err| format!("Failed to convert decrypted data to JSON: {}", err))?;
+    data_file
+        .write_all(serialized_data.as_bytes())
+        .map_err(|err| format!("Failed to write JSON to file {}: {}", OUTPUT_FN, err))
 }
 
 fn regress_impl() -> GuDotResult {
