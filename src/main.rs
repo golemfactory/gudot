@@ -1,5 +1,5 @@
 use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
-use serde::{de::DeserializeOwned, Serialize};
+use gudot_utils::{deserialize_from_file, serialize_to_file};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -129,43 +129,4 @@ fn regress_impl() -> Result<()> {
 
 fn plot_impl() -> Result<()> {
     Ok(())
-}
-
-fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -> Result<T> {
-    let mut file = File::open(filename.as_ref()).map_err(|err| {
-        format!(
-            "Failed to open file {}: {}",
-            filename.as_ref().display(),
-            err
-        )
-    })?;
-    let mut serialized = String::new();
-    file.read_to_string(&mut serialized).map_err(|err| {
-        format!(
-            "Failed to read {} to String: {}",
-            filename.as_ref().display(),
-            err
-        )
-    })?;
-    serde_json::from_str(&serialized)
-        .map_err(|err| format!("Invalid JSON in {}: {}", filename.as_ref().display(), err))
-}
-
-fn serialize_to_file<T: Serialize, P: AsRef<Path>>(data: T, filename: P) -> Result<()> {
-    let mut file = File::create(filename.as_ref()).map_err(|err| {
-        format!(
-            "Failed to create file {}: {}",
-            filename.as_ref().display(),
-            err
-        )
-    })?;
-    let serialized = serde_json::to_string(&data)
-        .map_err(|err| format!("Failed to convert data to JSON: {}", err))?;
-    file.write_all(serialized.as_bytes()).map_err(|err| {
-        format!(
-            "Failed to write JSON to file {}: {}",
-            filename.as_ref().display(),
-            err
-        )
-    })
 }
