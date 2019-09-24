@@ -1,4 +1,3 @@
-use gmorph::Enc;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     fs::File,
@@ -47,9 +46,20 @@ pub fn serialize_to_file<T: Serialize, P: AsRef<Path>>(data: T, filename: P) -> 
     })
 }
 
+fn chunk_size(length: usize, count: usize) -> usize {
+    let q = length / count;
+    let r = length % count;
+    if r > 0 {
+        q + 1
+    } else {
+        q
+    }
+}
+
 /// Chop as vector into `count` chunks, returning an iterator
-pub fn chop<'a>(v: &'a Vec<Enc>, count: usize) -> impl Iterator<Item = Vec<Enc>> + 'a {
-    v.chunks(v.len() / count).map(|c| c.to_vec())
+pub fn chop<'a, A: Clone>(v: &'a Vec<A>, count: usize) -> impl Iterator<Item = Vec<A>> + 'a {
+    let size = chunk_size(v.len(), count);
+    v.chunks(size).map(|c| c.to_vec())
 }
 
 /// Apply a function to both components of a pair
