@@ -1,10 +1,6 @@
 use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
 use gudot_utils::{deserialize_from_file, serialize_to_file};
-use std::{
-    fs::File,
-    io::{Read, Write},
-    path::Path,
-};
+use plotters::prelude::*;
 use structopt::StructOpt;
 
 type Result<T> = std::result::Result<T, String>;
@@ -128,5 +124,54 @@ fn regress_impl() -> Result<()> {
 }
 
 fn plot_impl() -> Result<()> {
+    const INPUT_FN: &str = "input.json";
+    const REGRESS_FN: &str = "regress.json";
+
+    let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
+    let (min_x, max_x) = (
+        *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
+        *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
+    );
+    let (min_y, max_y) = (
+        *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
+        *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
+    );
+    dbg!(&min_y, &max_y);
+    let points: Vec<(f64, f64)> = x
+        .into_iter()
+        .zip(y.into_iter())
+        .map(|(x, y)| (x as f64, y as f64))
+        .collect();
+
+    let root = BitMapBackend::new("plot.png", (1024, 768)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root.margin(20, 20, 20, 20);
+    let mut chart = ChartBuilder::on(&root)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_ranged(min_x..max_x, min_y..max_y)
+        .unwrap();
+    chart.configure_mesh().draw().unwrap();
+    chart
+        .draw_series(PointSeries::of_element(
+            points.clone(),
+            2,
+            &BLUE,
+            &|c, s, st| {
+                return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
+            },
+        ))
+        .unwrap();
+
+    if let Ok(m) = deserialize_from_file::<f64, _>(REGRESS_FN) {
+        // estimate b
+        let b = (min_y + max_y + m * (min_x + max_x)) / 2.0;
+        let points: Vec<(f64, f64)> = points.into_iter().map(|(x, _)| (x, -m * x + b)).collect();
+        let style = ShapeStyle::from(&RED);
+        chart
+            .draw_series(LineSeries::new(points, style.stroke_width(2)))
+            .unwrap();
+    }
+
     Ok(())
 }
