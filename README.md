@@ -1,8 +1,8 @@
-# gudot
-It computes linear regression using FHE [gMorph] library. 
+# gudot 
 This is a showcase for feasibility of gMorph/FHE on Golem.
-The whole software is experimental and should be treated as demonstration.
-It is included in Golem's workshop on deVcon 5.
+It computes linear regression using FHE [gMorph] library.
+The whole software is experimental and is provided for demonstration purposes only.
+It is included in Golem's workshop on DevCon 5.
 
 [gMorph]: https://github.com/golemfactory/gmorph
 
@@ -13,6 +13,7 @@ It is included in Golem's workshop on deVcon 5.
   [here](https://github.com/golemfactory/gwasm-runner), or download
   a precompiled binary from [here](https://github.com/golemfactory/gwasm-runner/releases)
 * freetype library - on Ubuntu install package `libfreetype6-dev`
+
 ## Building
 Assuming you've got the prerequisites satisfied, in order to build the project, simply run
 
@@ -22,8 +23,9 @@ cargo build --release
 
 ## Running
 The project involves executing several steps in sequence: some steps are done on the host OS (so your machine),
-whereas the main step is performed using gWasm (run on `gwasm-runner`). The sequence can be
-summarised as follows
+while the main step is performed using gWasm (run on `gwasm-runner`). 
+
+For illustration purposes, every step is executed by a separate command:
 
 ```
 $ target/release/gudot generate
