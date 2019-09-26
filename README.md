@@ -23,12 +23,34 @@ whereas the final step is performed using gWasm (run on `gwasm-runner`). The seq
 summarised as follows
 
 ```
-cargo run --release -- generate
-cargo run --release -- encrypt
-gwasm-runner target/release/gudot.wasm -- --subtasks=N
-cargo run --release -- decrypt
-cargo run --release -- regress
-cargo run --release -- plot
+$ target/release/gudot generate
+Writing input.json
+
+$ target/release/gudot encrypt
+Reading input.json
+Writing enc_input.json
+Writing keys.json
+
+$ gwasm-runner target/release/gudot.wasm -- --subtasks=N
+work dir: .../split
+Reading enc_input.json
+Writing enc_output.json
+
+$ target/release/gudot decrypt
+Reading keys.json
+Reading enc_output.json
+Writing output.json
+
+$ target/release/gudot regress
+Reading output.json
+Reading input.json
+Fitted model: y = -2.6898656093724984x + 93773.13902413758
+Writing regress.json
+
+$ target/release/gudot plot
+Reading input.json
+Reading regress.json
+Writing plot.png
 ```
 
 ## Components
