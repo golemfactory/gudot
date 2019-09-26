@@ -147,6 +147,7 @@ fn regress_impl() -> Result<()> {
 fn plot_impl() -> Result<()> {
     const INPUT_FN: &str = "input.json";
     const REGRESS_FN: &str = "regress.json";
+    const PLOT_FN: &str = "plot.png";
 
     let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
     let (min_x, max_x) = (
@@ -163,7 +164,7 @@ fn plot_impl() -> Result<()> {
         .map(|(x, y)| (x as f64, y as f64))
         .collect();
 
-    let root = BitMapBackend::new("plot.png", (1024, 768)).into_drawing_area();
+    let root = BitMapBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root.margin(20, 20, 20, 20);
     let mut chart = ChartBuilder::on(&root)
@@ -189,6 +190,8 @@ fn plot_impl() -> Result<()> {
             .map(|(x, _)| (x, slope * x + intercept))
             .collect();
         let style = ShapeStyle::from(&RED);
+        // The println is here, so it is executed after reading REGRESS_FN
+        println!("Writing {}", PLOT_FN);
         chart
             .draw_series(LineSeries::new(points, style.stroke_width(2)))
             .unwrap();

@@ -8,6 +8,7 @@ use std::{
 type Result<T> = std::result::Result<T, String>;
 
 pub fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -> Result<T> {
+    println!("Reading {}", filename.as_ref().display());
     let mut file = File::open(filename.as_ref()).map_err(|err| {
         format!(
             "Failed to open file {}: {}",
@@ -28,6 +29,7 @@ pub fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -
 }
 
 pub fn serialize_to_file<T: Serialize, P: AsRef<Path>>(data: T, filename: P) -> Result<()> {
+    println!("Writing {}", filename.as_ref().display());
     let mut file = File::create(filename.as_ref()).map_err(|err| {
         format!(
             "Failed to create file {}: {}",
