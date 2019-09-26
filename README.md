@@ -1,5 +1,8 @@
 # gudot
-Linear regression using FHE [gMorph] library
+It computes linear regression using FHE [gMorph] library. 
+This is a showcase for feasibility of gMorph/FHE on Golem.
+The whole software is experimental and should be treated as demonstration.
+It is included in Golem's workshop on deVcon 5.
 
 [gMorph]: https://github.com/golemfactory/gmorph
 
@@ -18,8 +21,8 @@ cargo build --release
 ```
 
 ## Running
-The project involves executing three steps in sequence: 2 steps are done on the host OS (so your machine),
-whereas the final step is performed using gWasm (run on `gwasm-runner`). The sequence can be
+The project involves executing several steps in sequence: some steps are done on the host OS (so your machine),
+whereas the main step is performed using gWasm (run on `gwasm-runner`). The sequence can be
 summarised as follows
 
 ```
