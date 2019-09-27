@@ -10,9 +10,13 @@ edition = "2018"
 gmorph = { git="https://github.com/golemfactory/gmorph.git" }
 structopt="0.2"
 gudot-utils = { path = "./gudot-utils" }
-plotters = "0.2"
 rand = "0.7"
 rand_distr = "0.2"
+
+[dependencies.plotters]
+version = "0.2"
+default_features = false
+features = ["svg"]
 
 [workspace]
 exclude = ["gudot-gwasm"]

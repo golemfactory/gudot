@@ -3,6 +3,10 @@ use gudot_utils::{deserialize_from_file, serialize_to_file};
 use plotters::prelude::*;
 use rand::prelude::*;
 use rand_distr::Normal;
+use std::{
+    path::Path,
+    process::{Command, Stdio},
+};
 use structopt::StructOpt;
 
 type Result<T> = std::result::Result<T, String>;
@@ -24,6 +28,12 @@ enum GuDot {
     /// Plot input data with/without regressed line
     #[structopt(name = "plot")]
     Plot,
+    /// Runs the entire sequence: generate, encrypt, run on gWasm, decrypt, regress, and plot
+    #[structopt(name = "run-all")]
+    RunAll {
+        #[structopt(long)]
+        subtasks: Option<usize>,
+    },
 }
 
 fn main() {
@@ -33,6 +43,7 @@ fn main() {
         GuDot::Decrypt => decrypt_impl(),
         GuDot::Regress => regress_impl(),
         GuDot::Plot => plot_impl(),
+        GuDot::RunAll { subtasks } => run_all_impl(subtasks),
     };
     if let Err(err) = res {
         eprintln!("Error occurred: {}", err);
@@ -147,7 +158,7 @@ fn regress_impl() -> Result<()> {
 fn plot_impl() -> Result<()> {
     const INPUT_FN: &str = "input.json";
     const REGRESS_FN: &str = "regress.json";
-    const PLOT_FN: &str = "plot.png";
+    const PLOT_FN: &str = "plot.svg";
 
     let fmt_plotting_err = |err| format!("Plotting error occurred: {}", err);
 
@@ -166,7 +177,7 @@ fn plot_impl() -> Result<()> {
         .map(|(x, y)| (x as f64, y as f64))
         .collect();
 
-    let root = BitMapBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
+    let root = SVGBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
     root.fill(&WHITE).map_err(fmt_plotting_err)?;
     let root = root.margin(20, 20, 20, 20);
     let mut chart = ChartBuilder::on(&root)
@@ -187,10 +198,11 @@ fn plot_impl() -> Result<()> {
         .map_err(fmt_plotting_err)?;
 
     if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
-        let points: Vec<(f64, f64)> = points
-            .into_iter()
-            .map(|(x, _)| (x, slope * x + intercept))
-            .collect();
+        const NUM_POINTS: usize = 1000;
+
+        let dx = (max_x - min_x) / (NUM_POINTS - 1) as f64;
+        let xs: Vec<f64> = (0..NUM_POINTS).map(|i| min_x + dx * i as f64).collect();
+        let points: Vec<(f64, f64)> = xs.into_iter().map(|x| (x, slope * x + intercept)).collect();
         let style = ShapeStyle::from(&RED);
         // The println is here, so it is executed after reading REGRESS_FN
         println!("Writing {}", PLOT_FN);
@@ -200,4 +212,40 @@ fn plot_impl() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn run_all_impl(subtasks: Option<usize>) -> Result<()> {
+    generate_impl()?;
+    encrypt_impl()?;
+
+    // execute gwasm-runner
+    // TODO this should be cleaned up!
+    let subtasks = subtasks.unwrap_or(1);
+    let profile = if cfg!(debug) { "debug" } else { "release" };
+    let target_path = Path::new("target").join(profile).join("gudot.wasm");
+    let mut cmd = Command::new("gwasm-runner");
+    cmd.args(&[
+        &target_path
+            .to_str()
+            .ok_or("Couldn't convert target path to str".to_string())?,
+        "--",
+        "--subtasks",
+        &format!("{}", subtasks),
+    ])
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit());
+    let output = cmd
+        .output()
+        .map_err(|err| format!("Command gwasm-runner failed with error: {}", err))?;
+    let status = output.status;
+    if !status.success() {
+        return Err(format!(
+            "Command \"gwasm-runner {}\" failed!",
+            target_path.display()
+        ));
+    }
+
+    decrypt_impl()?;
+    regress_impl()?;
+    plot_impl()
 }
