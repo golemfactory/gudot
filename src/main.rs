@@ -149,6 +149,8 @@ fn plot_impl() -> Result<()> {
     const REGRESS_FN: &str = "regress.json";
     const PLOT_FN: &str = "plot.png";
 
+    let fmt_plotting_err = |err| format!("Plotting error occurred: {}", err);
+
     let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
     let (min_x, max_x) = (
         *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
@@ -165,14 +167,14 @@ fn plot_impl() -> Result<()> {
         .collect();
 
     let root = BitMapBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE).map_err(fmt_plotting_err)?;
     let root = root.margin(20, 20, 20, 20);
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_ranged(min_x..max_x, min_y..max_y)
-        .unwrap();
-    chart.configure_mesh().draw().unwrap();
+        .map_err(fmt_plotting_err)?;
+    chart.configure_mesh().draw().map_err(fmt_plotting_err)?;
     chart
         .draw_series(PointSeries::of_element(
             points.clone(),
@@ -182,7 +184,7 @@ fn plot_impl() -> Result<()> {
                 return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
             },
         ))
-        .unwrap();
+        .map_err(fmt_plotting_err)?;
 
     if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
         let points: Vec<(f64, f64)> = points
@@ -194,7 +196,7 @@ fn plot_impl() -> Result<()> {
         println!("Writing {}", PLOT_FN);
         chart
             .draw_series(LineSeries::new(points, style.stroke_width(2)))
-            .unwrap();
+            .map_err(fmt_plotting_err)?;
     }
 
     Ok(())
