@@ -6,6 +6,7 @@ use rand_distr::Normal;
 use std::{
     path::Path,
     process::{Command, Stdio},
+    str::FromStr,
 };
 use structopt::StructOpt;
 
@@ -27,13 +28,61 @@ enum GuDot {
     Regress,
     /// Plot input data with/without regressed line
     #[structopt(name = "plot")]
-    Plot,
+    Plot {
+        /// Plot with x-range
+        #[structopt(subcommand)]
+        with_x_range: Option<WithXRange>,
+    },
     /// Runs the entire sequence: generate, encrypt, run on gWasm, decrypt, regress, and plot
     #[structopt(name = "run-all")]
     RunAll {
+        /// Number of gWasm tasks to create
         #[structopt(long)]
         subtasks: Option<usize>,
+        /// Backend to use: L, GU, or Golem
+        #[structopt(long)]
+        backend: Option<Backend>,
+        /// Plot with x-range
+        #[structopt(subcommand)]
+        with_x_range: Option<WithXRange>,
     },
+}
+
+#[derive(StructOpt, Debug)]
+enum Backend {
+    Local,
+    GolemUnlimited,
+    BrassGolem,
+}
+
+impl FromStr for Backend {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Backend> {
+        match s {
+            "L" => Ok(Backend::Local),
+            "GU" => Ok(Backend::GolemUnlimited),
+            "Golem" => Ok(Backend::BrassGolem),
+            x => Err(format!("{} is not a valid backend", x)),
+        }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+enum WithXRange {
+    #[structopt(name = "with_xrange")]
+    XRange {
+        #[structopt(flatten)]
+        range: PlotRange,
+    },
+}
+
+#[derive(StructOpt, Debug)]
+struct PlotRange {
+    #[structopt(long)]
+    min: f64,
+    #[structopt(long)]
+    max: f64,
 }
 
 fn main() {
@@ -42,8 +91,12 @@ fn main() {
         GuDot::Encrypt => encrypt_impl(),
         GuDot::Decrypt => decrypt_impl(),
         GuDot::Regress => regress_impl(),
-        GuDot::Plot => plot_impl(),
-        GuDot::RunAll { subtasks } => run_all_impl(subtasks),
+        GuDot::Plot { with_x_range } => plot_impl(with_x_range),
+        GuDot::RunAll {
+            subtasks,
+            backend,
+            with_x_range,
+        } => run_all_impl(subtasks, backend, with_x_range),
     };
     if let Err(err) = res {
         eprintln!("Error occurred: {}", err);
@@ -155,27 +208,63 @@ fn regress_impl() -> Result<()> {
     serialize_to_file((slope, intercept), REGRESS_FN)
 }
 
-fn plot_impl() -> Result<()> {
+fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     const INPUT_FN: &str = "input.json";
     const REGRESS_FN: &str = "regress.json";
     const PLOT_FN: &str = "plot.svg";
 
-    let fmt_plotting_err = |err| format!("Plotting error occurred: {}", err);
-
     let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
-    let (min_x, max_x) = (
-        *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
-        *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
-    );
-    let (min_y, max_y) = (
-        *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
-        *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
-    );
-    let points: Vec<(f64, f64)> = x
+    let x_range = if let Some(WithXRange::XRange { range }) = with_x_range {
+        range
+    } else {
+        PlotRange {
+            min: *x.iter().min().ok_or("Empty input vector x".to_string())? as f64,
+            max: *x.iter().max().ok_or("Empty input vector x".to_string())? as f64,
+        }
+    };
+
+    let (x_y_fit, y_range) =
+        if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
+            const NUM_POINTS: usize = 1000;
+            let dx = (x_range.max - x_range.min) / (NUM_POINTS - 1) as f64;
+            let xs: Vec<f64> = (0..NUM_POINTS)
+                .map(|i| x_range.min + dx * i as f64)
+                .collect();
+            let ys: Vec<f64> = xs.iter().map(|&x| slope * x + intercept).collect();
+            let y_first = *ys.first().ok_or("Empty input vector y".to_string())?;
+            let y_last = *ys.last().ok_or("Empty input vector y".to_string())?;
+            let y_range = if y_first < y_last {
+                PlotRange {
+                    min: y_first,
+                    max: y_last,
+                }
+            } else {
+                PlotRange {
+                    min: y_last,
+                    max: y_first,
+                }
+            };
+            (Some(xs.into_iter().zip(ys.into_iter())), y_range)
+        } else {
+            (
+                None,
+                PlotRange {
+                    min: *y.iter().min().ok_or("Empty input vector y".to_string())? as f64,
+                    max: *y.iter().max().ok_or("Empty input vector y".to_string())? as f64,
+                },
+            )
+        };
+
+    let x_y: Vec<(f64, f64)> = x
         .into_iter()
         .zip(y.into_iter())
         .map(|(x, y)| (x as f64, y as f64))
         .collect();
+
+    let fmt_plotting_err = |err| format!("Plotting error occurred: {}", err);
+
+    // The println is here, so it is executed after reading REGRESS_FN
+    println!("Writing {}", PLOT_FN);
 
     let root = SVGBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
     root.fill(&WHITE).map_err(fmt_plotting_err)?;
@@ -183,43 +272,44 @@ fn plot_impl() -> Result<()> {
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(30)
         .y_label_area_size(30)
-        .build_ranged(min_x..max_x, min_y..max_y)
+        .build_ranged(x_range.min..x_range.max, y_range.min..y_range.max)
         .map_err(fmt_plotting_err)?;
     chart.configure_mesh().draw().map_err(fmt_plotting_err)?;
     chart
-        .draw_series(PointSeries::of_element(
-            points.clone(),
-            2,
-            &BLUE,
-            &|c, s, st| {
-                return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
-            },
-        ))
+        .draw_series(PointSeries::of_element(x_y, 2, &BLUE, &|c, s, st| {
+            return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
+        }))
         .map_err(fmt_plotting_err)?;
 
-    if let Ok((slope, intercept)) = deserialize_from_file::<(f64, f64), _>(REGRESS_FN) {
-        const NUM_POINTS: usize = 1000;
-
-        let dx = (max_x - min_x) / (NUM_POINTS - 1) as f64;
-        let xs: Vec<f64> = (0..NUM_POINTS).map(|i| min_x + dx * i as f64).collect();
-        let points: Vec<(f64, f64)> = xs.into_iter().map(|x| (x, slope * x + intercept)).collect();
+    if let Some(x_y_fit) = x_y_fit {
         let style = ShapeStyle::from(&RED);
-        // The println is here, so it is executed after reading REGRESS_FN
-        println!("Writing {}", PLOT_FN);
         chart
-            .draw_series(LineSeries::new(points, style.stroke_width(2)))
+            .draw_series(LineSeries::new(x_y_fit, style.stroke_width(2)))
             .map_err(fmt_plotting_err)?;
     }
 
     Ok(())
 }
 
-fn run_all_impl(subtasks: Option<usize>) -> Result<()> {
+fn run_all_impl(
+    subtasks: Option<usize>,
+    backend: Option<Backend>,
+    with_x_range: Option<WithXRange>,
+) -> Result<()> {
     generate_impl()?;
     encrypt_impl()?;
 
     // execute gwasm-runner
     // TODO this should be cleaned up!
+    let backend = if let Some(backend) = backend {
+        match backend {
+            Backend::Local => "L",
+            Backend::GolemUnlimited => "GU",
+            Backend::BrassGolem => "Golem",
+        }
+    } else {
+        "L"
+    };
     let subtasks = subtasks.unwrap_or(1);
     let profile = if cfg!(debug) { "debug" } else { "release" };
     let target_path = Path::new("target").join(profile).join("gudot.wasm");
@@ -228,6 +318,8 @@ fn run_all_impl(subtasks: Option<usize>) -> Result<()> {
         &target_path
             .to_str()
             .ok_or("Couldn't convert target path to str".to_string())?,
+        "--backend",
+        backend,
         "--",
         "--subtasks",
         &format!("{}", subtasks),
@@ -247,5 +339,5 @@ fn run_all_impl(subtasks: Option<usize>) -> Result<()> {
 
     decrypt_impl()?;
     regress_impl()?;
-    plot_impl()
+    plot_impl(with_x_range)
 }
