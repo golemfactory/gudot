@@ -32,7 +32,7 @@ enum GuDot {
         #[structopt(subcommand)]
         with_x_range: Option<WithXRange>,
     },
-    /// Runs the entire sequence: generate, encrypt, run on gWasm, decrypt, regress, and plot
+    /// Runs the entire FHE sequence: encrypt, run on gWasm, decrypt, and regress
     #[structopt(name = "run-all")]
     RunAll {
         /// Specifies number of gWasm tasks to create
@@ -42,8 +42,6 @@ enum GuDot {
         /// BrassGolem
         #[structopt(long)]
         backend: Option<Backend>,
-        #[structopt(subcommand)]
-        with_x_range: Option<WithXRange>,
     },
 }
 
@@ -92,11 +90,7 @@ fn main() {
         GuDot::Decrypt => decrypt_impl(),
         GuDot::Regress => regress_impl(),
         GuDot::Plot { with_x_range } => plot_impl(with_x_range),
-        GuDot::RunAll {
-            subtasks,
-            backend,
-            with_x_range,
-        } => run_all_impl(subtasks, backend, with_x_range),
+        GuDot::RunAll { subtasks, backend } => run_all_impl(subtasks, backend),
     };
     if let Err(err) = res {
         eprintln!("Error occurred: {}", err);
@@ -291,12 +285,7 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     Ok(())
 }
 
-fn run_all_impl(
-    subtasks: Option<usize>,
-    backend: Option<Backend>,
-    with_x_range: Option<WithXRange>,
-) -> Result<()> {
-    generate_impl()?;
+fn run_all_impl(subtasks: Option<usize>, backend: Option<Backend>) -> Result<()> {
     encrypt_impl()?;
 
     // execute gwasm-runner
@@ -338,6 +327,5 @@ fn run_all_impl(
     }
 
     decrypt_impl()?;
-    regress_impl()?;
-    plot_impl(with_x_range)
+    regress_impl()
 }
