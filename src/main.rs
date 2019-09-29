@@ -14,35 +14,34 @@ type Result<T> = std::result::Result<T, String>;
 
 #[derive(StructOpt, Debug)]
 enum GuDot {
-    /// Generate test input data
+    /// Generates test input data
     #[structopt(name = "generate")]
     Generate,
-    /// Encrypt input data
+    /// Encrypts input data
     #[structopt(name = "encrypt")]
     Encrypt,
-    /// Decrypt output data
+    /// Decrypts output data
     #[structopt(name = "decrypt")]
     Decrypt,
-    /// Regress output data
+    /// Regresses output data
     #[structopt(name = "regress")]
     Regress,
-    /// Plot input data with/without regressed line
+    /// Plots input data with/without regressed line
     #[structopt(name = "plot")]
     Plot {
-        /// Plot with x-range
         #[structopt(subcommand)]
         with_x_range: Option<WithXRange>,
     },
     /// Runs the entire sequence: generate, encrypt, run on gWasm, decrypt, regress, and plot
     #[structopt(name = "run-all")]
     RunAll {
-        /// Number of gWasm tasks to create
+        /// Specifies number of gWasm tasks to create
         #[structopt(long)]
         subtasks: Option<usize>,
-        /// Backend to use: L, GU, or Golem
+        /// Specifies gWasm backend to use: L for Local, GU for GolemUnlimited, or Golem for
+        /// BrassGolem
         #[structopt(long)]
         backend: Option<Backend>,
-        /// Plot with x-range
         #[structopt(subcommand)]
         with_x_range: Option<WithXRange>,
     },
@@ -70,6 +69,7 @@ impl FromStr for Backend {
 
 #[derive(StructOpt, Debug)]
 enum WithXRange {
+    /// Specifies x-range for the generated plot
     #[structopt(name = "with_xrange")]
     XRange {
         #[structopt(flatten)]
