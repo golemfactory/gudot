@@ -267,7 +267,10 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(60)
         .y_label_area_size(60)
-        .build_ranged(x_range.min..x_range.max, y_range.min..y_range.max)
+        .build_ranged(
+            x_range.min - 30.0..x_range.max + 30.0,
+            y_range.min..y_range.max,
+        )
         .map_err(fmt_plotting_err)?;
     chart
         .configure_mesh()
