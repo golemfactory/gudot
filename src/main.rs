@@ -307,6 +307,7 @@ fn run_all_impl(subtasks: Option<usize>, backend: Option<Backend>) -> Result<()>
         &target_path
             .to_str()
             .ok_or("Couldn't convert target path to str".to_string())?,
+        "-v",
         "--backend",
         backend,
         "--",
