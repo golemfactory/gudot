@@ -103,9 +103,9 @@ fn generate_impl() -> Result<()> {
 
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
-    let v = 2.71;
-    let t0 = 9 * 3600;
-    let d0 = 6624;
+    let v = 5.4;
+    let t0 = 9 * 3600 + 30 * 60;
+    let d0 = 6500;
 
     let mut x = Vec::new();
     let mut y = Vec::new();
@@ -114,7 +114,7 @@ fn generate_impl() -> Result<()> {
     let normal =
         Normal::new(0.0, 2.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
 
-    for i in 0..100 {
+    for i in 0..600 {
         let t = t0 + i;
         let noise = normal.sample(&mut rng);
         let dd = (v * (i as f64) + noise).round() as u32;
