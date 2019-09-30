@@ -265,7 +265,7 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     root.fill(&WHITE).map_err(fmt_plotting_err)?;
     let root = root.margin(20, 20, 20, 20);
     let mut chart = ChartBuilder::on(&root)
-        .x_label_area_size(60)
+        .x_label_area_size(40)
         .y_label_area_size(60)
         .build_ranged(
             x_range.min - 30.0..x_range.max + 30.0,
@@ -278,8 +278,9 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
             let nt = NaiveTime::from_num_seconds_from_midnight(secs.round() as u32, 0);
             nt.format("%H:%M:%S").to_string()
         })
+        .x_desc("Time, hh:mm:ss")
         .y_label_formatter(&|distance| format!("{}", distance.round() as u64))
-        .y_desc("Distance from Osaka, [km]")
+        .y_desc("Distance from Osaka, km")
         .draw()
         .map_err(fmt_plotting_err)?;
     chart
