@@ -31,8 +31,8 @@ fn main() {
     // NB this will *not* be necessary when --out-dir option of cargo build
     // makes stable
     let source_dir = &out_dir.join("wasm32-unknown-emscripten").join("release");
-    let profile =
-        PathBuf::from(env::var("PROFILE").expect("The PROFILE environment variable must be set"));
+    let profile = env::var("PROFILE").expect("The PROFILE environment variable must be set");
+    println!("cargo:rustc-cfg=build={:?}", profile);
     let target_dir = Path::new("target").join(profile);
     const JS: &str = "gudot.js";
     const WASM: &str = "gudot.wasm";
