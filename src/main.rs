@@ -1,3 +1,4 @@
+use chrono::NaiveTime;
 use gmorph::{Decrypt, Enc, Encrypt, KeyPair};
 use gudot_utils::{deserialize_from_file, serialize_to_file};
 use plotters::prelude::*;
@@ -113,7 +114,7 @@ fn generate_impl() -> Result<()> {
     let normal =
         Normal::new(0.0, 2.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
 
-    for i in 1..100 {
+    for i in 0..100 {
         let t = t0 + i;
         let noise = normal.sample(&mut rng);
         let dd = (v * (i as f64) + noise).round() as u32;
@@ -264,11 +265,20 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     root.fill(&WHITE).map_err(fmt_plotting_err)?;
     let root = root.margin(20, 20, 20, 20);
     let mut chart = ChartBuilder::on(&root)
-        .x_label_area_size(30)
-        .y_label_area_size(30)
+        .x_label_area_size(60)
+        .y_label_area_size(60)
         .build_ranged(x_range.min..x_range.max, y_range.min..y_range.max)
         .map_err(fmt_plotting_err)?;
-    chart.configure_mesh().draw().map_err(fmt_plotting_err)?;
+    chart
+        .configure_mesh()
+        .x_label_formatter(&|secs| {
+            let nt = NaiveTime::from_num_seconds_from_midnight(secs.round() as u32, 0);
+            nt.format("%H:%M:%S").to_string()
+        })
+        .y_label_formatter(&|distance| format!("{}", distance.round() as u64))
+        .y_desc("Distance from Osaka, [km]")
+        .draw()
+        .map_err(fmt_plotting_err)?;
     chart
         .draw_series(PointSeries::of_element(x_y, 2, &BLUE, &|c, s, st| {
             return EmptyElement::at(c) + Circle::new((0, 0), s, st.filled());
