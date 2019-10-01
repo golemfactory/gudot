@@ -12,6 +12,7 @@ structopt="0.2"
 gudot-utils = { path = "./gudot-utils" }
 rand = "0.7"
 rand_distr = "0.2"
+chrono = "0.4.9"
 
 [dependencies.plotters]
 version = "0.2"
