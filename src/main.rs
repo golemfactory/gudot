@@ -280,7 +280,7 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
         })
         .x_desc("Time, hh:mm:ss")
         .y_label_formatter(&|distance| format!("{}", distance.round() as u64))
-        .y_desc("Distance from Osaka, km")
+        .y_desc("Distance from Osaka, hm")
         .draw()
         .map_err(fmt_plotting_err)?;
     chart
