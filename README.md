@@ -2,6 +2,7 @@
 This is a showcase for feasibility of gMorph/FHE on Golem.
 It computes linear regression using FHE [gMorph] library.
 The whole software is experimental and is provided for demonstration purposes only.
+Please note that we make no claims about security of the encryption scheme.
 It is included in Golem's workshop on DevCon 5.
 
 [gMorph]: https://github.com/golemfactory/gmorph
