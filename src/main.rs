@@ -112,7 +112,7 @@ fn generate_impl() -> Result<()> {
 
     let mut rng = thread_rng();
     let normal =
-        Normal::new(0.0, 2.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
+        Normal::new(0.0, 50.0).map_err(|err| format!("Couldn't create noise source: {:?}", err))?;
 
     for i in 0..600 {
         let t = t0 + i;
