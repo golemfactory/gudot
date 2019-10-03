@@ -101,6 +101,8 @@ fn main() {
 fn generate_impl() -> Result<()> {
     const FILENAME: &str = "input.json";
 
+    println!("Generating input points");
+
     //    let x = vec!(1,2,3,4);
     //    let y = vec!(2,4,6,8);
     let v = 5.4;
@@ -135,6 +137,8 @@ fn encrypt_impl() -> Result<()> {
     const KEYS_FN: &str = "keys.json";
     const OUTPUT_FN: &str = "enc_input.json";
 
+    println!("Encrypting input points");
+
     // input.json of the form
     // [[1,2,3],[2,4,6]]
     let key_pair = KeyPair::new();
@@ -164,6 +168,8 @@ fn decrypt_impl() -> Result<()> {
     const INPUT_FN: &str = "enc_output.json";
     const OUTPUT_FN: &str = "output.json";
 
+    println!("Decrypting output parameters");
+
     let key_pair: KeyPair = deserialize_from_file(KEYS_FN)?;
     let data: Vec<(Enc, Enc)> = deserialize_from_file(INPUT_FN)?;
 
@@ -180,6 +186,8 @@ fn regress_impl() -> Result<()> {
     const INPUT_FN: &str = "input.json";
     const OUTPUT_FN: &str = "output.json";
     const REGRESS_FN: &str = "regress.json";
+
+    println!("Deriving linear model");
 
     let fitted: Vec<(u32, u32)> = deserialize_from_file(OUTPUT_FN)?;
     let (a, b) = fitted
@@ -206,7 +214,9 @@ fn regress_impl() -> Result<()> {
 fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     const INPUT_FN: &str = "input.json";
     const REGRESS_FN: &str = "regress.json";
-    const PLOT_FN: &str = "plot.svg";
+    const PLOT_FN: &str = "plot.png";
+
+    println!("Generating plot in {}", PLOT_FN);
 
     let (x, y): (Vec<u32>, Vec<u32>) = deserialize_from_file(INPUT_FN)?;
     let x_range = if let Some(WithXRange::XRange { range }) = with_x_range {
@@ -259,21 +269,22 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     let fmt_plotting_err = |err| format!("Plotting error occurred: {}", err);
 
     // The println is here, so it is executed after reading REGRESS_FN
-    println!("Writing {}", PLOT_FN);
+    // println!("Writing {}", PLOT_FN);
 
-    let root = SVGBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
+    let root = BitMapBackend::new(PLOT_FN, (1024, 768)).into_drawing_area();
     root.fill(&WHITE).map_err(fmt_plotting_err)?;
-    let root = root.margin(20, 20, 20, 20);
+    let root = root.margin(30, 30, 30, 30);
     let mut chart = ChartBuilder::on(&root)
-        .x_label_area_size(40)
-        .y_label_area_size(60)
+        .x_label_area_size(70)
+        .y_label_area_size(90)
         .build_ranged(
-            x_range.min - 30.0..x_range.max + 30.0,
+            x_range.min - 30.0..x_range.max + 50.0,
             y_range.min..y_range.max,
         )
         .map_err(fmt_plotting_err)?;
     chart
         .configure_mesh()
+        .label_style(FontDesc::new("Arial", 25.0))
         .x_label_formatter(&|secs| {
             let nt = NaiveTime::from_num_seconds_from_midnight(secs.round() as u32, 0);
             nt.format("%H:%M:%S").to_string()
@@ -292,7 +303,7 @@ fn plot_impl(with_x_range: Option<WithXRange>) -> Result<()> {
     if let Some(x_y_fit) = x_y_fit {
         let style = ShapeStyle::from(&RED);
         chart
-            .draw_series(LineSeries::new(x_y_fit, style.stroke_width(2)))
+            .draw_series(LineSeries::new(x_y_fit, style.stroke_width(4)))
             .map_err(fmt_plotting_err)?;
     }
 

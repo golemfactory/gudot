@@ -15,7 +15,7 @@ pub fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -
             err
         )
     })?;
-    println!("Reading {}", filename.as_ref().display());
+    // println!("Reading {}", filename.as_ref().display());
     let mut serialized = String::new();
     file.read_to_string(&mut serialized).map_err(|err| {
         format!(
@@ -29,7 +29,7 @@ pub fn deserialize_from_file<T: DeserializeOwned, P: AsRef<Path>>(filename: P) -
 }
 
 pub fn serialize_to_file<T: Serialize, P: AsRef<Path>>(data: T, filename: P) -> Result<()> {
-    println!("Writing {}", filename.as_ref().display());
+    // println!("Writing {}", filename.as_ref().display());
     let mut file = File::create(filename.as_ref()).map_err(|err| {
         format!(
             "Failed to create file {}: {}",

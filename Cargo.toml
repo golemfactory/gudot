@@ -16,8 +16,8 @@ chrono = "0.4.9"
 
 [dependencies.plotters]
 version = "0.2"
-default_features = false
-features = ["svg"]
+# default_features = false
+# features = ["svg"]
 
 [workspace]
 exclude = ["gudot-gwasm"]
