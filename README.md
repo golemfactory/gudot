@@ -63,7 +63,11 @@ Writing plot.png
 ```
 $ gwasm-runner --backend=Brass target/release/gudot.wasm -- --subtasks=N
 ```
-When running on the Golem network, you may want to adjust some parameters specific to Brass Golem (e.g. the path to your Golem's data directory). To do so, you'll need to create a configuration file for the runner. You can find more information on this in the [gwasm-runner README].
+When running on the Golem network, you may want to adjust some parameters specific to Brass Golem
+(e.g. the path to your Golem's data directory). To do so, you'll need to create a configuration
+file for the runner. You can find more information on this in the [gwasm-runner README].
+
+[gwasm-runner README]: https://github.com/golemfactory/gwasm-runner/blob/master/README.md#running-on-the-golem-network
 
 ## Components
 * `generate` --- creates `input.json` containing sample data in the format `[[x1,...,xn][y1,...,yn]]`
