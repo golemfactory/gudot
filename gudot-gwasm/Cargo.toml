@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gwasm-api = { git="https://github.com/golemfactory/gwasm-runner.git" }
+gwasm-api = { git="https://github.com/golemfactory/gwasm-runner.git", package = "gwasm-dispatcher" }
 gmorph = { git="https://github.com/golemfactory/gmorph.git"}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
