@@ -7,6 +7,8 @@ It is included in Golem's workshop on DevCon 5.
 
 [gMorph]: https://github.com/golemfactory/gmorph
 
+![gudot GIF demo](https://i.imgur.com/w9fW3aR.gif)
+
 ## Requirements
 * emsdk - installation instructions can be found
   [here](https://emscripten.org/docs/getting_started/downloads.html)
